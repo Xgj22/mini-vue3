@@ -1,22 +1,19 @@
+import { ShapeFlags } from "../shared/shapeFlags"
 import { createComponentInstance,setupComponent } from "./component"
 
 export function render(vnode,container){
     // patch
-    
     patch(vnode,container)
 }
 
 function patch(vnode,container){
-    console.log('patch=>')
     // 去处理组件
     // 判断是不是 element 类型
     // processElement()
-    console.log('VNODE_TYPE =>',vnode)
-    if(typeof vnode.type === 'string'){
-        console.log('element')
+    const { shapeFlag } = vnode
+    if(shapeFlag & ShapeFlags.ELEMENT){ // typeof string
         processElement(vnode,container)
-    }else if(typeof vnode.type === 'object'){
-        console.log('component')
+    }else if(shapeFlag & ShapeFlags.STATEFUL_COMPONENT){ // typeof object
         processComponent(vnode,container)
     } 
 }
@@ -29,20 +26,26 @@ function mountElement(vnode,container){
     
     // 存储 el
     const el = (vnode.el = document.createElement(vnode.type))
-    console.log('el=>',el)
     // string array
-    const { children } = vnode
+    const { children,shapeFlag } = vnode
 
-    if(typeof children === 'string'){
+    if(shapeFlag & ShapeFlags.TEXT_CHILDREN){
         el.textContent = children
-    }else if(Array.isArray(children)){
+    }else if(shapeFlag & ShapeFlags.ARRAY_CHILDREN){
         mountChildren(vnode,el)
     }
     // props
     const { props } = vnode
     for(const key in props){
         const val = props[key]
-        el.setAttribute(key,val)
+        // on + Event name
+        const isOn = (key:string) => /^on[A-Z]/.test(key)
+        if(isOn(key)){
+            const event = key.slice(2).toLowerCase()
+            el.addEventListener(event,val)
+        }else{
+            el.setAttribute(key,val)
+        }
     }
 
     container.append(el)
@@ -66,14 +69,12 @@ function mountComponent(initialVNode:any,container){
     setupRenderEffect(initialVNode,instance,container)
 }
 
-function setupRenderEffect(initialVNode,instance:any,container){
+function setupRenderEffect(initialVNode:any,instance:any,container){
     const { proxy } = instance
     const subTree = instance.render.call(proxy)
     // vnode -> patch
     // vnode -> element ->mountElement
-    console.log('subTreeFront=>')
     patch(subTree,container)
-    console.log('subTree=>',subTree)
     // 确保所有的 element 都已经 mount
     initialVNode.el = subTree.el
 }

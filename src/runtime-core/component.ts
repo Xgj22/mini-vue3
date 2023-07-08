@@ -5,11 +5,14 @@ import { emit } from "./componentEmit"
 import { initSlots } from "./componentSlots"
 
 // 创建组件实例
-export function createComponentInstance(vnode){
+export function createComponentInstance(vnode,parentComponent){
+    console.log('currentInstance=>',parentComponent)
     const component = {
         vnode,
         type:vnode.type,
         setupState:{},
+        provides:parentComponent?.provides ? parentComponent.provides : {}, // 浅拷贝
+        parent:parentComponent,
         props:{},
         slots:{},
         emit:()=>{}

@@ -1,8 +1,6 @@
 import { camelize,toHandlerKey } from "../shared/index"
 
 export function emit(instance,event,...args){
-    console.log("emitEE",event)
-
     const { props } = instance
 
     // TPP

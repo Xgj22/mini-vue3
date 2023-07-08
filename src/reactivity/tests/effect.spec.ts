@@ -2,7 +2,7 @@ import { reactive } from "../reactive";
 import { effect,stop } from "../effect";
 
 describe("effect", () => {
-    it.skip("happy path", () => {
+    it("happy path", () => {
       const user = reactive({
         age: 10,
       });
@@ -16,11 +16,11 @@ describe("effect", () => {
   
       // update
       user.age++;
-    //   expect(nextAge).toBe(12);
+      expect(nextAge).toBe(12);
       expect(user.age).toBe(11)
     });
 
-    it.skip("should return runner when call effect",() => {
+    it("should return runner when call effect",() => {
         let foo = 1
         const runner = effect(() => {
             foo = 10
@@ -28,7 +28,7 @@ describe("effect", () => {
         })
 
         // expect(foo).toBe(2)
-        const r = runner()
+        runner()
         // expect(foo).toBe(3)
         // expect(r).toBe("foo")
 

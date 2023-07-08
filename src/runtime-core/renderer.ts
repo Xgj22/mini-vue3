@@ -1,5 +1,6 @@
 import { ShapeFlags } from "../shared/shapeFlags"
 import { createComponentInstance,setupComponent } from "./component"
+import { Fragment,Text } from "./vnode";
 
 export function render(vnode,container){
     // patch
@@ -10,12 +11,33 @@ function patch(vnode,container){
     // 去处理组件
     // 判断是不是 element 类型
     // processElement()
-    const { shapeFlag } = vnode
-    if(shapeFlag & ShapeFlags.ELEMENT){ // typeof string
-        processElement(vnode,container)
-    }else if(shapeFlag & ShapeFlags.STATEFUL_COMPONENT){ // typeof object
-        processComponent(vnode,container)
-    } 
+    const { shapeFlag,type } = vnode
+    switch (type) {
+        case Fragment:
+            ProcessFragment(vnode,container)
+            break;
+        case Text:
+            ProcessText(vnode,container)
+            break;
+        default:
+            if(shapeFlag & ShapeFlags.ELEMENT){ // typeof string
+                processElement(vnode,container)
+            }else if(shapeFlag & ShapeFlags.STATEFUL_COMPONENT){ // typeof object
+                processComponent(vnode,container)
+            } 
+            break;
+    }
+
+}
+
+function ProcessFragment(vnode,container){
+    mountChildren(vnode,container)
+}
+
+function ProcessText(vnode,container){
+    const { children } = vnode
+    const textNode = (vnode.el = document.createTextNode(children))
+    container.append(textNode)
 }
 
 function processElement(vnode,container){
@@ -52,6 +74,7 @@ function mountElement(vnode,container){
 }
 
 function mountChildren(vnode,container){
+    console.log('mountChildren=>',vnode)
     vnode.children.forEach(v => {
         patch(v,container)
     })
@@ -72,6 +95,7 @@ function mountComponent(initialVNode:any,container){
 function setupRenderEffect(initialVNode:any,instance:any,container){
     const { proxy } = instance
     const subTree = instance.render.call(proxy)
+
     // vnode -> patch
     // vnode -> element ->mountElement
     patch(subTree,container)

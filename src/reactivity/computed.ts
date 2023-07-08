@@ -6,7 +6,6 @@ class ComputedRefImpl {
     private _value
     private _effect
     constructor(getter){
-        this._getter = getter
 
         this._effect = new ReactiveEffect(getter,() => {
             if(!this._dirty){

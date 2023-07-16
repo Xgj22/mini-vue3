@@ -3,6 +3,7 @@ import { initProps } from "./componentProps"
 import { shallowReadonly } from "../reactivity/reactive"
 import { emit } from "./componentEmit"
 import { initSlots } from "./componentSlots"
+import { proxyRefs } from "../reactivity/ref"
 
 // 创建组件实例
 export function createComponentInstance(vnode,parentComponent){
@@ -15,7 +16,9 @@ export function createComponentInstance(vnode,parentComponent){
         parent:parentComponent,
         props:{},
         slots:{},
-        emit:()=>{}
+        isMounted:false,
+        emit:()=>{},
+        subTree:{}
     }
     // 为了
     component.emit = emit.bind(null,component) as any
@@ -60,7 +63,7 @@ function handleSetupResult(instance,setupResult:any) {
     // TODO function
 
     if(typeof setupResult==='object'){
-        instance.setupState = setupResult
+        instance.setupState = proxyRefs(setupResult)
     }
 
     finishComponentSetup(instance)

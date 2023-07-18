@@ -18,8 +18,15 @@ function patchProp(el,key,preVal,newVal) {
     }
 }
 
-function insert(el,parent) {
-    return parent.append(el)
+function insert(child,parent,anchor) {
+    const a = child.parentNode
+    const b = anchor?.parentNode
+    console.log(a,b)
+    console.log("PARENT===>",parent)
+    console.log(Object.is(a,parent))
+    console.log("insert===>C",child.parentNode)
+    // console.log("Achor",anchor.parentNode)
+    parent.insertBefore(child,anchor || null)
 }
 
 function remove(child){

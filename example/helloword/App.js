@@ -18,7 +18,7 @@ export const App = {
             // string
             // "hi,mini-vue"
             // [h("p",{class:"red"},[h("p",{class:"red"},"xgjxgj")]),h("p",{class:"blue"},"mini-vue")]
-            [h("div",{},"hi,"+ this.msg),h(Foo,{
+            [h("div",{id:'xgj'},"hi,"+ this.msg),h(Foo,{
                 onAdd(){
                     console.log('onAdd')
                 },

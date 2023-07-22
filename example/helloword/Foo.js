@@ -26,7 +26,7 @@ export const Foo = {
             "emitAdd"
         )
 
-        const foo = h("p",{},"foo")
-        return h("div",{},[foo,btn])
+        const foo = h("p",{id:'ppp'},"foo")
+        return h("div",{id:'divdiv'},[foo,btn])
     },
 }

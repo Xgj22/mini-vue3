@@ -14,7 +14,7 @@ export const App = {
             {
                 id:"root",
             },
-            [h("p",{},"主页"),h("div",{},[
+            [h("p",{},"主页"),h("div",{id:"div1"},[
                 // h(ArrayToText),
                 // h(TextToText),
                 // h(TextToArray)

@@ -10,7 +10,7 @@ export function createRender(options){
     const {
         createElement,
         patchProp:hostPatchProp,
-        insert,
+        insert:hostInsert,
         remove:hostRemove,
         setElementContext
     } = options
@@ -34,8 +34,10 @@ export function createRender(options){
                 break;
             default:
                 if(shapeFlag & ShapeFlags.ELEMENT){ // typeof string
+                    console.log('processElement===>',container,n1,n2)
                     processElement(n1,n2,container,parentComponent,anchor)
                 }else if(shapeFlag & ShapeFlags.STATEFUL_COMPONENT){ // typeof object
+                    console.log('.STATEFUL_COMPONENT===>',container)
                     processComponent(n1,n2,container,parentComponent,anchor)
                 } 
                 break;
@@ -55,6 +57,7 @@ export function createRender(options){
     
     function processElement(n1,n2,container,parentComponent,anchor){
         if(!n1){
+            console.log('mountElement===>',container)
             mountElement(n2,container,parentComponent,anchor)
         }else{
             patchElement(n1,n2,container,parentComponent,anchor)
@@ -64,12 +67,14 @@ export function createRender(options){
     
     function mountElement(n2,container,parentComponent,anchor){
         
+        // console.log(container)
         // 存储 el
         const el = (n2.el = createElement(n2.type))
         // string array
         const { children,shapeFlag } = n2
-        console.log('n2===>',n2)
-    
+        console.log("n2===>",n2)
+        console.log("el===>",el)
+        console.log('mountElement',children)
         if(shapeFlag & ShapeFlags.TEXT_CHILDREN){
             el.textContent = children
         }else if(shapeFlag & ShapeFlags.ARRAY_CHILDREN){
@@ -81,12 +86,7 @@ export function createRender(options){
             const val = props[key]
             hostPatchProp(el,key,null,val)
         }
-        console.log('传过去的child',el)
-    
-        // container.append(el)
-        console.log('parentNode===>',el.parentNode)
-        console.log('container===>',container)
-        insert(el,container,anchor)
+        hostInsert(el,container,anchor)
     }
     
     function patchElement(n1,n2,container,parentComponent,anchor){
@@ -125,10 +125,14 @@ export function createRender(options){
 
     // 更新 children 逻辑，这里要用到 Diff 算法？？？
     function patchChildren(n1,n2,container,parentComponent,anchor){
+        console.log("patchChildren====>",container,n2)
+        
         const c1 = n1.children
         const prevShapeFlag = n1.shapeFlag
         const { shapeFlag } = n2
         const c2 = n2.children
+        console.log("C1C2===>",c1,c2)
+        console.log('ellllllllllllllll====>',n2.el)
         if(shapeFlag & ShapeFlags.TEXT_CHILDREN){
             if(prevShapeFlag & ShapeFlags.ARRAY_CHILDREN){
                 // 1. 把老的 children 清空
@@ -145,7 +149,7 @@ export function createRender(options){
                 // 挂载 children
                 mountChildren(c2,container,parentComponent,anchor)
             }else{
-                patchKeyedChildren(c1,c2,container,parentComponent,anchor)
+                patchKeyedChildren(c1,c2,n2.el,parentComponent,anchor)
             }
         }
     }
@@ -155,7 +159,8 @@ export function createRender(options){
         let e1 = c1.length - 1
         let e2 = c2.length - 1
         const l2 = c2.length
-
+        let maxNewIndexSoFar = 0
+        let moved = false
         function isSameVNodeType(n1,n2){
             return n1.type === n2.type && n1.key === n2.key
         }
@@ -175,7 +180,6 @@ export function createRender(options){
             // 每次移动 i 的位置
             i++
         }
-
         // 比较右侧
         while(i<=e1&&i<=e2){
             const n1 = c1[e1]
@@ -193,14 +197,86 @@ export function createRender(options){
         // 新的比老的长，创建
         if(i>e1){
             if(i<=e2){
-                const nextPos = i + 1
+                const nextPos = e2 + 1
                 // 锚点
-                const anchor = i + 1 < l2 ? c2[nextPos].el : null 
-                console.log("anchor===>",anchor)
-                console.log('anchorParent===>',anchor.parentNode)
-                console.log("c2[nextPos].el==>",c2[nextPos].el.parentNode)
-                console.log("cccccccccontainer===>",container)
-                patch(null,c2[i],anchor.parentNode,parentComponent,anchor)
+                const anchor = e2 + 1 < l2 ? c2[nextPos].el : null 
+                while(i<=e2){
+                    patch(null,c2[i],container,parentComponent,anchor)
+                    i++
+                }
+            }
+        }else if(i>e2){ //
+            while(i<=e1){
+                hostRemove(c1[i].el)
+                i++
+            }
+        }else{
+            let s1 = i
+            let s2 = i
+            let toBePatch = e2 - s1 + 1
+            // 通过给定 Map ，达到快速查找 key 的目的 
+            let keyToNewIndexMap = new Map()
+            let newKeyToOldKeyMap = new Array(toBePatch).fill(0)
+            let patched = 0
+            for(let i = s1;i<=e2;i++){
+                const nextChild = c2[i]
+                keyToNewIndexMap.set(nextChild.key,i)
+            }
+
+            for(let i = s1;i<=e1;i++){
+                const prevChild = c1[i]
+
+                let index 
+                // 判断元素身上有没有 key 值
+                // 这就是为什么开发中经常需要去绑定 key 值的原因
+                if(prevChild?.key!=null){
+                    index = keyToNewIndexMap.get(c1[i].key)
+                }else{
+                    for(let j = s2;j < e2;j++){
+                        // 遍历找到相同的 VNode
+                        if(isSameVNodeType(c1[i],c2[j])){
+                            index = j
+                            break
+                        }
+                    }
+                }
+                if(patched>toBePatch){
+                    // 卸载掉真实 DOM 元素
+                    hostRemove(c1[i].el)
+                    continue
+                }
+
+                if(index!==undefined){
+                    if(index >= maxNewIndexSoFar){
+                        maxNewIndexSoFar = index
+                    }else{
+                        moved = true
+                    }
+                    // 建立映射关系
+                    // 旧的在新的 的排序，便于后面确定最长递增子序列
+                    newKeyToOldKeyMap[index - s2] = i + 1
+                    patch(prevChild,c2[index],container,parentComponent,null)
+                    patched ++
+                }else{
+                    hostRemove(c1[i].el)
+                }
+            }
+
+            // 获取最长递增子序列,得到的是递增子序列的下标
+            // 如果移动了才去获取最长递增子序列
+            const increasingIndexSequence = moved ? getSequence(newKeyToOldKeyMap) : []
+            let j = increasingIndexSequence.length - 1
+            for(let i = toBePatch-1;i>=0;i--){
+                const nextIndex = s2 + i
+                const nextChild = c2[nextIndex]
+                const anchor = nextIndex + 1 < l2 ? c2[nextIndex+1].el : null
+                if(newKeyToOldKeyMap[i]===0){
+                    patch(null,nextChild,container,parentComponent,anchor)
+                }else if(j<0 || i!==increasingIndexSequence[j]){
+                    hostInsert(nextChild.el,container,anchor)
+                }else{
+                    j--
+                }
             }
         }
     }
@@ -228,7 +304,7 @@ export function createRender(options){
     
     function mountComponent(n1,initialVNode:any,container,parentComponent,anchor){
         const instance = createComponentInstance(initialVNode,parentComponent)
-    
+        
         setupComponent(instance)
         setupRenderEffect(initialVNode,instance,container,anchor)
     }
@@ -250,11 +326,11 @@ export function createRender(options){
                 const { proxy } = instance
                 const subTree = instance.render.call(proxy)
                 const preSubTree = instance.subTree
-
+                console.log('preSubTree',preSubTree)
+                console.log('subTree',subTree)
                 // 更新 subTree
                 instance.subTree = subTree
-                console.log("preSubTree===>",preSubTree)
-                console.log("subTree===>",subTree)
+                console.log('setupRenderEffect====>',container)
                 patch(preSubTree,subTree,container,instance,anchor)
                 initialVNode.el = subTree.el
             }
@@ -266,4 +342,46 @@ export function createRender(options){
     return {
         createApp:createAppAPI(render)
     }
+}
+
+// 获取最长递增子序列
+function getSequence(arr: number[]): number[] {
+    const p = arr.slice();
+    const result = [0];
+    let i, j, u, v, c;
+    const len = arr.length;
+    for (i = 0; i < len; i++) {
+      const arrI = arr[i];
+      if (arrI !== 0) {
+        j = result[result.length - 1];
+        if (arr[j] < arrI) {
+          p[i] = j;
+          result.push(i);
+          continue;
+        }
+        u = 0;
+        v = result.length - 1;
+        while (u < v) {
+          c = (u + v) >> 1;
+          if (arr[result[c]] < arrI) {
+            u = c + 1;
+          } else {
+            v = c;
+          }
+        }
+        if (arrI < arr[result[u]]) {
+          if (u > 0) {
+            p[i] = result[u - 1];
+          }
+          result[u] = i;
+        }
+      }
+    }
+    u = result.length;
+    v = result[u - 1];
+    while (u-- > 0) {
+      result[u] = v;
+      v = p[v];
+    }
+    return result;
 }

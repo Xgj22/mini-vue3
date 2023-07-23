@@ -24,10 +24,15 @@ function createGetter(isReadonly = false,shallow = false){
         }
 
         if(isObject(res)){
-            return isReadonly ? readonly(res):reactive(res)
+            return isReadonly ? readonly(res) : reactive(res)
         }
 
         if(!isReadonly){
+            // effect 函数首次收集依赖
+            // 当一个副作用函数（effect函数）执行时，如果它访问了响应式对象的某个属性，
+            // Vue 3会调用track函数来建立这个依赖关系。
+            // track函数会将当前的副作用函数与响应式对象的属性关联起来，这样在后续响应式对象发生变化时，
+            // Vue 3就能够找到相应的副作用函数，并触发它们进行更新。
             track(target,key)
         }
         return res

@@ -7,10 +7,11 @@ import { proxyRefs } from "../reactivity/ref"
 
 // 创建组件实例
 export function createComponentInstance(vnode,parentComponent){
-    console.log('currentInstance=>',parentComponent)
+    console.log('currentInstance=>',vnode)
     const component = {
         vnode,
         type:vnode.type,
+        next:null,
         setupState:{},
         provides:parentComponent?.provides ? parentComponent.provides : {}, // 浅拷贝
         parent:parentComponent,
@@ -20,6 +21,7 @@ export function createComponentInstance(vnode,parentComponent){
         emit:()=>{},
         subTree:{}
     }
+    console.log('component==>',component)
     // 为了
     component.emit = emit.bind(null,component) as any
     return component

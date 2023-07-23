@@ -2,6 +2,7 @@ import { effect } from "../reactivity/effect";
 import { EMPTY_OBJ } from "../shared";
 import { ShapeFlags } from "../shared/shapeFlags"
 import { createComponentInstance,setupComponent } from "./component"
+import { shouldUpdateComponent } from "./componentUpadateUtils";
 import { createAppAPI } from "./createApp";
 import { Fragment,Text } from "./vnode";
 
@@ -34,10 +35,8 @@ export function createRender(options){
                 break;
             default:
                 if(shapeFlag & ShapeFlags.ELEMENT){ // typeof string
-                    console.log('processElement===>',container,n1,n2)
                     processElement(n1,n2,container,parentComponent,anchor)
                 }else if(shapeFlag & ShapeFlags.STATEFUL_COMPONENT){ // typeof object
-                    console.log('.STATEFUL_COMPONENT===>',container)
                     processComponent(n1,n2,container,parentComponent,anchor)
                 } 
                 break;
@@ -57,7 +56,6 @@ export function createRender(options){
     
     function processElement(n1,n2,container,parentComponent,anchor){
         if(!n1){
-            console.log('mountElement===>',container)
             mountElement(n2,container,parentComponent,anchor)
         }else{
             patchElement(n1,n2,container,parentComponent,anchor)
@@ -67,14 +65,10 @@ export function createRender(options){
     
     function mountElement(n2,container,parentComponent,anchor){
         
-        // console.log(container)
         // 存储 el
         const el = (n2.el = createElement(n2.type))
         // string array
         const { children,shapeFlag } = n2
-        console.log("n2===>",n2)
-        console.log("el===>",el)
-        console.log('mountElement',children)
         if(shapeFlag & ShapeFlags.TEXT_CHILDREN){
             el.textContent = children
         }else if(shapeFlag & ShapeFlags.ARRAY_CHILDREN){
@@ -125,14 +119,11 @@ export function createRender(options){
 
     // 更新 children 逻辑，这里要用到 Diff 算法？？？
     function patchChildren(n1,n2,container,parentComponent,anchor){
-        console.log("patchChildren====>",container,n2)
         
         const c1 = n1.children
         const prevShapeFlag = n1.shapeFlag
         const { shapeFlag } = n2
         const c2 = n2.children
-        console.log("C1C2===>",c1,c2)
-        console.log('ellllllllllllllll====>',n2.el)
         if(shapeFlag & ShapeFlags.TEXT_CHILDREN){
             if(prevShapeFlag & ShapeFlags.ARRAY_CHILDREN){
                 // 1. 把老的 children 清空
@@ -150,6 +141,7 @@ export function createRender(options){
                 mountChildren(c2,container,parentComponent,anchor)
             }else{
                 patchKeyedChildren(c1,c2,n2.el,parentComponent,anchor)
+                // patchKeyedChildren(c1,c2,container,parentComponent,anchor)
             }
         }
     }
@@ -164,6 +156,7 @@ export function createRender(options){
         function isSameVNodeType(n1,n2){
             return n1.type === n2.type && n1.key === n2.key
         }
+        console.log('c1,c2===>',c1,c2)
 
         // 比较左侧
         while(i<=e1&&i<=e2){
@@ -172,8 +165,10 @@ export function createRender(options){
             // if(n1===n2){ 这里不能这样判断两个节点是否相同
             // 只需判断type 和 key
             if(isSameVNodeType(n1,n2)){
+                console.log('container==>',container)
+                console.log('n1,n2===>',n1,n2)
                 // 递归地比较孩子节点
-                patch(n1,n2,container,parentComponent,parentAnchor)
+                patch(n1,n2,n1.el,parentComponent,parentAnchor)
             }else{
                 break
             }
@@ -186,7 +181,8 @@ export function createRender(options){
             const n2 = c2[e2]
 
             if(isSameVNodeType(n1,n2)){
-                patch(n1,n2,container,parentComponent,parentAnchor)
+                // patch(n1,n2,container,parentComponent,parentAnchor)
+                patch(n1,n2,n1.el,parentComponent,parentAnchor)
             }else{
                 break
             }
@@ -232,7 +228,7 @@ export function createRender(options){
                 if(prevChild?.key!=null){
                     index = keyToNewIndexMap.get(c1[i].key)
                 }else{
-                    for(let j = s2;j < e2;j++){
+                    for(let j = s2;j <= e2;j++){
                         // 遍历找到相同的 VNode
                         if(isSameVNodeType(c1[i],c2[j])){
                             index = j
@@ -298,20 +294,37 @@ export function createRender(options){
     }
     
     function processComponent(n1,n2:any,container:any,parentComponent,anchor){
-        // 先挂载
-        mountComponent(n1,n2,container,parentComponent,anchor)
+        if(!n1){
+            // 先挂载
+            mountComponent(n1,n2,container,parentComponent,anchor)
+        }else{
+            updateComponent(n1,n2)
+        }
+    }
+
+    function updateComponent(n1,n2){
+        // 更新组件，需要去触发 effect 收集的的依赖，通过挂载在组件实例上的 update 
+        // 如何拿到组件实例呢，需要在创建的时候把组件实例挂载到 VNode 上    
+        const instance = (n2.component = n1.component)
+        if(shouldUpdateComponent(n1,n2)){
+            instance.next = n2
+            instance.update()
+        }else{
+            n2.el = n1.el
+        }
+
     }
     
     function mountComponent(n1,initialVNode:any,container,parentComponent,anchor){
-        const instance = createComponentInstance(initialVNode,parentComponent)
-        
+        const instance = (initialVNode.component = createComponentInstance(initialVNode,parentComponent))
+        console.log('initialVNode==>',initialVNode)
         setupComponent(instance)
         setupRenderEffect(initialVNode,instance,container,anchor)
     }
     
     function setupRenderEffect(initialVNode:any,instance:any,container,anchor){
         // 检测到更新的真正逻辑代码
-        effect(() => {
+        instance.update = effect(() => {
             if(!instance.isMounted){
                 const { proxy } = instance
                 const subTree = (instance.subTree = instance.render.call(proxy))
@@ -323,14 +336,17 @@ export function createRender(options){
                 initialVNode.el = subTree.el
                 instance.isMounted = true
             }else{
+                // 需要一个 vnode 之前的节点？
+                const { next,vnode } = instance
+                if(next){
+                    next.el = vnode.el
+                    updateComponentPrevRender(instance,next)
+                }
                 const { proxy } = instance
                 const subTree = instance.render.call(proxy)
                 const preSubTree = instance.subTree
-                console.log('preSubTree',preSubTree)
-                console.log('subTree',subTree)
                 // 更新 subTree
                 instance.subTree = subTree
-                console.log('setupRenderEffect====>',container)
                 patch(preSubTree,subTree,container,instance,anchor)
                 initialVNode.el = subTree.el
             }
@@ -342,6 +358,12 @@ export function createRender(options){
     return {
         createApp:createAppAPI(render)
     }
+}
+
+function updateComponentPrevRender(instance,nextVNode){
+    instance.vnode = nextVNode
+    instance.next = null
+    instance.props = nextVNode.props
 }
 
 // 获取最长递增子序列

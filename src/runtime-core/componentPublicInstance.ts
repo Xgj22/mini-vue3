@@ -1,6 +1,7 @@
 const publicPropertiesMap = {
     $el:(i) => i.vnode.el,
-    $slots:(i) => i.slots
+    $slots:(i) => i.slots,
+    $props:(i) => i.props
 }
 
 // 获取 setup 返回的值

@@ -4,6 +4,7 @@ import { ShapeFlags } from "../shared/shapeFlags"
 import { createComponentInstance,setupComponent } from "./component"
 import { shouldUpdateComponent } from "./componentUpadateUtils";
 import { createAppAPI } from "./createApp";
+import { queueJobs } from "./scheduler";
 import { Fragment,Text } from "./vnode";
 
 export function createRender(options){
@@ -324,7 +325,8 @@ export function createRender(options){
     
     function setupRenderEffect(initialVNode:any,instance:any,container,anchor){
         // 检测到更新的真正逻辑代码
-        instance.update = effect(() => {
+        instance.update = effect(
+            () => {
             if(!instance.isMounted){
                 const { proxy } = instance
                 const subTree = (instance.subTree = instance.render.call(proxy))
@@ -351,6 +353,11 @@ export function createRender(options){
                 initialVNode.el = subTree.el
             }
 
+        },
+        {
+            scheduler(){
+                queueJobs(instance.update)
+            }
         })
         
     }

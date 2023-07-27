@@ -7,20 +7,24 @@ const enum TagType {
 
 export function baseParse(content){
     const context = createParseContext(content)
-    return createRoot(parseChildren(context,""))
+    return createRoot(parseChildren(context,[]))
 }
 
-function parseChildren(context,parentTag) {
+function parseChildren(context,ancestors) {
     const nodes:any = []
 
-    while(!isEnd(context,parentTag)){
+    while(!isEnd(context,ancestors)){
+        
         let node
         const s = context.source
+        console.log('----------------')
+        console.log(ancestors)
+        console.log('s==>',s)
         if(s.startsWith('{{')){
             node = parseInterpolation(context)
         }else if(s[0] === '<'){
             if(/[a-z]/i.test(s[1])){
-                node = parseElement(context)
+                node = parseElement(context,ancestors)
             }
         }
     
@@ -33,13 +37,19 @@ function parseChildren(context,parentTag) {
     return nodes
 }
 
-function isEnd(context,parentTag){
+function isEnd(context,ancestors){
     const s = context.source
 
     // 当遇到结束标签
-    if(s.startsWith(`</${parentTag}>`)){
-        return true
+    if(s.startsWith('</')){
+        for(let i = 0;i<ancestors.length;i++){
+            const tag = ancestors[i].tag
+            if(s.slice(2,2+tag.length) === tag){
+                return true
+            }
+        }
     }
+    
     return !s
 }
 
@@ -47,10 +57,14 @@ function parseText(context){
 
     let endIndex = context.source.length
     
-    const index = context.source.indexOf('{{')
+    const endToken = ['<','{{']
 
-    if(index!==-1){
-        endIndex = index
+    for(let i = 0;i<endToken.length;i++){
+        const index = context.source.indexOf(endToken[i])
+        
+        if(index!==-1 && index < endIndex){
+            endIndex = index
+        }
     }
 
     const content = parseTextData(context,endIndex)
@@ -69,16 +83,22 @@ function parseTextData(context,length){
     return content
 }
 
-function parseElement(context){
+function parseElement(context,ancestors){
 
     // 解析 tag
     const element:any = parseTag(context,TagType.START)
-    console.log('element==>',element)
+    ancestors.push(element)
+    element.children = parseChildren(context,ancestors)
+    ancestors.pop()
+    if(context.source.slice(2,2+element.tag.length)===element.tag){
+        // 删除处理完成的代码
+        parseTag(context,TagType.END)
+    }else{
+        console.log(context,element.tag)
+        console.log('uuuu',context.source.slice(2,2+element.tag.length))
+        throw new Error(`缺少结束标签${element.tag}`)
+    }
 
-    element.children = parseChildren(context,element.tag)
-
-    // 删除处理完成的代码
-    parseTag(context,TagType.END)
 
     return element
 }

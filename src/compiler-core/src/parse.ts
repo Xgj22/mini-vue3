@@ -17,9 +17,6 @@ function parseChildren(context,ancestors) {
         
         let node
         const s = context.source
-        console.log('----------------')
-        console.log(ancestors)
-        console.log('s==>',s)
         if(s.startsWith('{{')){
             node = parseInterpolation(context)
         }else if(s[0] === '<'){
@@ -94,8 +91,6 @@ function parseElement(context,ancestors){
         // 删除处理完成的代码
         parseTag(context,TagType.END)
     }else{
-        console.log(context,element.tag)
-        console.log('uuuu',context.source.slice(2,2+element.tag.length))
         throw new Error(`缺少结束标签${element.tag}`)
     }
 
@@ -155,7 +150,8 @@ function advanceBy(context,length){
 
 function createRoot(children){
     return {
-        children
+        children,
+        type:NodeTypes.ROOT
     }
 }
 

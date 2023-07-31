@@ -3,6 +3,8 @@ export const isObject = function(obj){
     return obj!==null&&typeof obj === 'object'
 }
 
+export const isString = (str) => typeof str ==='string'
+
 export const extend = Object.assign;
 
 export const hasChanged = (val,newVal) =>{

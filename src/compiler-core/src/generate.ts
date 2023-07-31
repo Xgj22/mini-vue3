@@ -1,5 +1,6 @@
+import { isString } from "../../shared"
 import { NodeTypes } from "./ast"
-import { TO_DISPLAY_STRING, helperMapName } from "./runtimeHelpers"
+import { CREATE_ELEMENT_NODE, TO_DISPLAY_STRING, helperMapName } from "./runtimeHelpers"
 
 export function generate(ast){
     const context = createCodegenContext()
@@ -11,7 +12,6 @@ export function generate(ast){
     const args = ['_ctx','_cache']
     const signature = args.join(', ')
 
-    console.log(ast)
     push(`function ${functionName}(${signature}){`)
     push('return ')
     // 处理节点
@@ -56,6 +56,12 @@ function genNode(node,context){
         case NodeTypes.TEXT:
             genText(node,context)
             break;
+        case NodeTypes.ELEMENT:
+            genElement(node,context)
+            break;
+        case NodeTypes.COMPOUND:
+            genCompoundExpression(node,context)
+            break
         case NodeTypes.INTERPOLATION:
             genInterpolation(node,context)
             break;
@@ -64,6 +70,47 @@ function genNode(node,context){
             break;
     }
     
+}
+
+function genCompoundExpression(node,context){
+    const { children } = node
+    const { push } = context
+    for(let i = 0;i<children.length;i++){
+        const child = children[i]
+        if(isString(child)){
+            push(child)
+        }else{
+            genNode(child,context)
+        }
+    }
+}
+
+function genElement(node,context){
+    const { tag,props,children } = node
+    const { push,helper } = context
+    push(`${helper(CREATE_ELEMENT_NODE)}( `)
+    genNodeList(getNullable([tag,props,children]),context)
+    // genNode(children,context)
+    push(')')
+}
+
+function getNullable(args){
+    return args.map(arg => arg ? arg : 'null')
+}
+
+function genNodeList(nodes,context){
+    const { push } = context
+    for (let i = 0; i < nodes.length; i++) {
+        if(isString(nodes[i])){
+            push(nodes[i])
+        }else{
+            genNode(nodes[i],context)
+        }
+
+        if(i<nodes.length-1){
+            push(',')
+        }
+    }
 }
 
 function genExpression(node,context){
@@ -82,5 +129,5 @@ function genInterpolation(node,context){
 
 function genText(node,context){
     const { push } = context
-    push(`${node.content}`)
+    push(`'${node.content}'`)
 }

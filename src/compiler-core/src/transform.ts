@@ -14,7 +14,12 @@ export function transform(root,options = {}){
 }
 
 function createRootCodegen(root){
-    root.codegenNode = root.children[0]
+    const child = root.children[0]
+    if(child.type===NodeTypes.ELEMENT){
+        root.codegenNode = child.codegenNode
+    }else{
+        root.codegenNode = root.children[0]
+    }
 }
 
 function createTransformcontext(node,options){
@@ -32,10 +37,13 @@ function createTransformcontext(node,options){
 function traverseNode(node:any,context){
 
     const nodeTransform = context.nodeTransform
+    const exitFns:any  = []
 
     for(let i = 0;i<nodeTransform.length;i++){
         const transform = nodeTransform[i]
-        transform(node)
+        // 先调用 后执行
+        const onExit = transform(node,context)
+        if(onExit) exitFns.push(onExit)
     }
 
     switch (node.type) {
@@ -46,8 +54,14 @@ function traverseNode(node:any,context){
         case NodeTypes.ROOT:
         case NodeTypes.ELEMENT:
             traverseChildren(node,context)
+            break;
         default:
             break;
+    }
+
+    let i = exitFns.length
+    while(i--){
+        exitFns[i]()
     }
 }
 

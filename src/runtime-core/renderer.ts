@@ -329,7 +329,7 @@ export function createRender(options){
             () => {
             if(!instance.isMounted){
                 const { proxy } = instance
-                const subTree = (instance.subTree = instance.render.call(proxy))
+                const subTree = (instance.subTree = instance.render.call(proxy,proxy))
                 
                 // n2 -> patch
                 // n2 -> element ->mountElement
@@ -345,7 +345,7 @@ export function createRender(options){
                     updateComponentPrevRender(instance,next)
                 }
                 const { proxy } = instance
-                const subTree = instance.render.call(proxy)
+                const subTree = instance.render.call(proxy,proxy)
                 const preSubTree = instance.subTree
                 // 更新 subTree
                 instance.subTree = subTree

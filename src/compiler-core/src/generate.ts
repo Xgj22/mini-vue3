@@ -1,6 +1,6 @@
 import { isString } from "../../shared"
 import { NodeTypes } from "./ast"
-import { CREATE_ELEMENT_NODE, TO_DISPLAY_STRING, helperMapName } from "./runtimeHelpers"
+import { CREATE_ELEMENT_VNODE, TO_DISPLAY_STRING, helperMapName } from "./runtimeHelpers"
 
 export function generate(ast){
     const context = createCodegenContext()
@@ -32,7 +32,7 @@ function getFunctionPreamble(ast,context){
     const aliasHelper = (s) => `${helperMapName[s]}:_${helperMapName[s]}`
     // 如果是文本类型，则直接跳过
     if(ast.helpers.length > 0){
-        push(`${ast.helpers.map(aliasHelper).join(', ')} = ${VueBinging}`)
+        push(`const {${ast.helpers.map(aliasHelper).join(', ')}}= ${VueBinging}`)
     }
     push('\n')
     push('return ')
@@ -88,7 +88,7 @@ function genCompoundExpression(node,context){
 function genElement(node,context){
     const { tag,props,children } = node
     const { push,helper } = context
-    push(`${helper(CREATE_ELEMENT_NODE)}( `)
+    push(`${helper(CREATE_ELEMENT_VNODE)}( `)
     genNodeList(getNullable([tag,props,children]),context)
     // genNode(children,context)
     push(')')

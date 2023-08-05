@@ -1,6 +1,6 @@
 import { isTracking, trackEffects,  triggerEffects } from "./effect"
 import { reactive } from "./reactive"
-import { hasChanged,isObject } from '../shared/index.js'
+import { hasChanged,isObject } from '../shared/index'
 
 // RefImpl 的程序设计
 // 1 true "1"
